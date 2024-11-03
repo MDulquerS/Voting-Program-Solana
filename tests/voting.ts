@@ -4,23 +4,58 @@ import { Voting } from "../target/types/voting";
 import { startAnchor } from "solana-bankrun";
 import { BankrunProvider } from "anchor-bankrun";
 import { PublicKey } from "@solana/web3.js";
+import { expect } from "chai";
 
-const votingAddress = new PublicKey("AsjZ3kWAUSQRNt2pZVeJkywhZ6gpLpHZmJjduPmKZDZZ")
-const IDL = require('../target/idl/voting.json');
+const votingAddress = new PublicKey(
+  "GqG5WCUCVhTus2kCXDZLo9AQr6qjG7MnYoiV9dDAoetj"
+);
+const IDL = require("../target/idl/voting.json");
 describe("voting", () => {
+  let context;
+  let provider;
+  let votingProgram;
 
+  before(async () => {
+    context = await startAnchor(
+      "",
+      [{ name: "voting", programId: votingAddress }],
+      []
+    );
+    provider = new BankrunProvider(context);
+    votingProgram = new Program<Voting>(IDL, provider);
+  });
 
   it("Is initialized poll", async () => {
-    const context = await startAnchor("", [{ name: "voting", programId: votingAddress }], [])
-    const provider = new BankrunProvider(context)
-    const votingProgram = new Program<Voting>(IDL, provider)
+    await votingProgram.methods
+      .initializePoll(
+        new anchor.BN(1),
+        "What is your favourite type of peanut butter",
+        new anchor.BN(1),
+        new anchor.BN(13842384623864)
+      )
+      .rpc();
 
-    await votingProgram.methods.initializePoll(
-      new anchor.BN(1),
-      "What is your favourite type of peanut butter",
-      new anchor.BN(1),
-      new anchor.BN(13842384623864),
+    const [pollAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8)],
+      votingAddress
+    );
 
-    ).rpc()
+    const poll = await votingProgram.account.poll.fetch(pollAddress);
+    console.log(poll);
+    expect(poll.pollId.toNumber()).equal(1);
+    expect(poll.pollDescription).equal(
+      "What is your favourite type of peanut butter"
+    );
+    expect(poll.pollStart.toNumber()).lessThan(poll.pollEnd.toNumber());
   });
+
+  it("initialize candidate", async () => {
+    await votingProgram.methods
+      .initializeCandidate("Smoth", new anchor.BN(1))
+      .rpc();
+    await votingProgram.methods
+      .initializeCandidate("Crunchy", new anchor.BN(1))
+      .rpc();
+  });
+  it("vote", async () => {});
 });
