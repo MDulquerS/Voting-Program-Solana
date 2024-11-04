@@ -56,6 +56,37 @@ describe("voting", () => {
     await votingProgram.methods
       .initializeCandidate("Crunchy", new anchor.BN(1))
       .rpc();
+
+    const [crunchyAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Crunchy")],
+      votingAddress
+    );
+    const crunchyCandidate = await votingProgram.account.candidate.fetch(
+      crunchyAddress
+    );
+    console.log(crunchyCandidate);
+    expect(crunchyCandidate.candidateVotes.toNumber()).equal(0);
+    const [smothAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Smoth")],
+      votingAddress
+    );
+    const smothCandidate = await votingProgram.account.candidate.fetch(
+      smothAddress
+    );
+    console.log(smothCandidate);
+    expect(smothCandidate.candidateVotes.toNumber()).equal(0);
   });
-  it("vote", async () => {});
+
+  it("vote", async () => {
+    await votingProgram.methods.vote("Smoth", new anchor.BN(1)).rpc();
+    const [smothAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Smoth")],
+      votingAddress
+    );
+    const smothCandidate = await votingProgram.account.candidate.fetch(
+      smothAddress
+    );
+    console.log(smothCandidate);
+    expect(smothCandidate.candidateVotes.toNumber()).equal(1);
+  });
 });
